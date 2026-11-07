@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liked Songs MIDI Jukebox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0d12;--panel:#17151e;--panel2:#1f1c29;--line:#2c2838;--ink:#ece8f4;--dim:#9a93ab;--acc:#ffb347;--acc2:#ff5f8a;--ok:#5fe0a8}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#2a1838 0,transparent 60%),var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;min-height:100vh}
+header{padding:28px 28px 8px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+h1 span{color:var(--acc)}
+.sub{color:var(--dim);font-size:14px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;padding:16px 28px 140px}
+@media(max-width:900px){main{grid-template-columns:1fr}.side{order:-1}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.tools{display:flex;gap:10px;padding:14px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+input[type=search]{flex:1;min-width:180px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:9px;font:inherit}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);padding:8px 12px;border-radius:99px;cursor:pointer;font:inherit;font-size:13px}
+.chip.on{color:#1a1206;background:var(--acc);border-color:var(--acc)}
+.list{max-height:calc(100vh - 290px);overflow:auto}
+.row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid #221f2c;cursor:default}
+.row:hover{background:#1c1925}
+.row.has{cursor:pointer}
+.row.playing{background:linear-gradient(90deg,#3a2414,transparent)}
+.num{font-family:'JetBrains Mono',monospace;color:var(--dim);font-size:12px;text-align:right}
+.row.has .num{color:var(--ok)}
+.t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a{color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acts{display:flex;gap:6px}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:6px 10px;border-radius:8px;font:inherit;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--acc)}
+.btn.sp{background:#1db954;color:#04140a;border-color:#1db954;font-weight:700}
+.btn.go{background:var(--ok);color:#06150e;border-color:var(--ok);font-weight:700}
+.side{display:flex;flex-direction:column;gap:16px}
+.drop{padding:22px;text-align:center;border:2px dashed #3d3650;border-radius:14px;cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--acc);background:#251b14}
+.drop b{display:block;font-size:17px;margin-bottom:4px}
+.drop small{color:var(--dim)}
+.stat{display:flex;justify-content:space-between;padding:12px 16px;font-size:14px;color:var(--dim)}
+.stat b{color:var(--ink);font-family:'JetBrains Mono',monospace}
+.bar{height:6px;background:var(--panel2);border-radius:9px;margin:0 16px 14px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.help{padding:14px 16px;font-size:13px;color:var(--dim);line-height:1.55}
+.help b{color:var(--ink)}
+.log{padding:0 16px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--dim);max-height:150px;overflow:auto}
+.log div{padding:2px 0}.log .m{color:var(--ok)}.log .x{color:var(--acc2)}
+canvas{display:block;width:100%;height:110px;border-radius:14px}
+.player{position:fixed;left:0;right:0;bottom:0;background:#121017ee;backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 28px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:18px;align-items:center}
+@media(max-width:760px){.player{grid-template-columns:1fr;gap:8px;padding:10px 14px}}
+.now .t{font-size:16px}
+.ctr{display:flex;gap:8px;align-items:center;justify-content:center}
+.pb{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:16px;cursor:pointer}
+.pb.big{width:52px;height:52px;background:var(--acc);color:#1a1206;border:0;font-size:20px}
+.pb.on{color:var(--acc);border-color:var(--acc)}
+.seek{display:flex;gap:10px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim)}
+input[type=range]{flex:1;accent-color:var(--acc)}
+.vol{width:90px;flex:none!important}
+.empty{padding:40px;text-align:center;color:var(--dim)}
+.tag{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Liked Songs <span>MIDI Jukebox</span></h1>
+  <div class="sub" id="sub"></div>
+</header>
+<main>
+  <section class="card">
+    <div class="tools">
+      <input type="search" id="q" placeholder="Search songs or artists…">
+      <button class="chip on" data-f="all">All</button>
+      <button class="chip" data-f="has">Ready to play</button>
+      <button class="chip" data-f="need">Need MIDI</button>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+  <aside class="side">
+    <label class="drop card" id="drop">
+      <b>Drop MIDI files here</b>
+      <small>.mid files, a whole folder, or a .zip — each file finds its song, and a single file starts playing</small>
+      <input type="file" id="file" accept=".mid,.midi,.kar,.zip" multiple hidden>
+    </label>
+    <div class="card help" style="display:flex;flex-direction:column;gap:10px">
+      <b style="font-size:15px">Fill it up, one tap at a time</b>
+      <div>Next missing: <b id="nm">—</b></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn go" id="nmgo" target="_blank" rel="noopener" href="#">Search BitMidi ↗</a>
+        <button class="btn" id="nmskip">Skip</button>
+        <button class="btn" id="dir">Add a folder</button>
+      </div>
+      <div style="border-top:1px solid var(--line);padding-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn go" id="watch" style="background:var(--acc);border-color:var(--acc);color:#1a1206">👀 Watch my Downloads</button>
+        <span id="wst" style="font-size:12px"></span>
+      </div>
+      <small>With <b>Watch my Downloads</b> on, just click the MIDI on BitMidi — it shows up here and plays by itself. Otherwise drop the download anywhere on this page.</small>
+    </div>
+    <input type="file" id="dirin" webkitdirectory multiple hidden>
+    <div class="card">
+      <div class="stat"><span>Songs with a MIDI</span><b id="cnt">0 / 0</b></div>
+      <div class="bar"><i id="prog" style="width:0"></i></div>
+      <div class="log" id="log"></div>
+    </div>
+    <canvas id="viz" class="card" width="760" height="220"></canvas>
+    <div class="card help">
+      <b>How it works.</b> Tap <b>▶ Spotify</b> to hear the real song in Spotify. For the MIDI version, tap <b>Find</b> next to a song to search BitMidi for a MIDI of it, download the .mid, then drop it here. The file name is matched to the right song (use <b>Load</b> on a row to attach one by hand). Your MIDIs are kept in this browser so they're here next time.
+      <br><br>Downloaded file has a strange name? Drop it right after tapping a song's Find and it goes to that song.<br><br>Press <b>Synth test</b> below to check your sound.
+    </div>
+  </aside>
+</main>
+<div class="player">
+  <div class="now"><div class="t" id="nt">Nothing playing</div><div class="a" id="na">Pick a green song</div></div>
+  <div>
+    <div class="ctr">
+      <button class="pb" id="shuf" title="Shuffle">⤮</button>
+      <button class="pb" id="prev" title="Previous">⏮</button>
+      <button class="pb big" id="play" title="Play/Pause">▶</button>
+      <button class="pb" id="next" title="Next">⏭</button>
+      <button class="pb" id="test" title="Synth test" style="width:auto;padding:0 12px;border-radius:99px;font-size:12px">Synth test</button>
+    </div>
+  </div>
+  <div class="seek"><span id="cur">0:00</span><input type="range" id="pos" min="0" max="1000" value="0"><span id="dur">0:00</span><span>🔊</span><input type="range" class="vol" id="vol" min="0" max="100" value="70"></div>
+</div>
+<input type="file" id="one" accept=".mid,.midi,.kar" hidden>
+<script>
+const SONGS=[{"k": "duelling banjos", "t": "Duelling Banjos", "a": ["Banjo Troubadours"], "y": 2000, "g": "bluegrass", "bpm": 150, "sp": ["5h86f6XjgIM6iB2KG3tc6n"]}, {"k": "big bad john", "t": "Big Bad John", "a": ["Jimmy Dean", "Geoff Castellucci"], "y": 1961, "g": "classic country", "bpm": 173, "sp": ["4cRJvAh0BwNng8nO5Vnf5F", "0ZwFAzKgF9ehHKnZeI1lD2"]}, {"k": "house of the rising sun", "t": "House of the Rising Sun", "a": ["Geoff Castellucci"], "y": 2021, "g": "sea shanties", "bpm": 172, "sp": ["6DdciFArNpkU9zD2mN8tvb"]}, {"k": "far from any road", "t": "Far From Any Road", "a": ["The Handsome Family"], "y": 2003, "g": "southern gothic", "bpm": 120, "sp": ["3LDkLpuxQlEuEiZmkxpr8S"]}, {"k": "time in a bottle", "t": "Time in a Bottle", "a": ["Jim Croce"], "y": 1972, "g": "folk rock", "bpm": 134, "sp": ["7uWFUpGuEfmxYeymkV95jn"]}, {"k": "banana boat", "t": "Banana Boat", "a": ["Harry Belafonte"], "y": 1956, "g": "", "bpm": 123, "sp": ["4fHDlIntTsRGSyTg5UYZYC"]}, {"k": "hoist the colours", "t": "Hoist The Colours", "a": ["The Wellermen", "Ebucs"], "y": 2023, "g": "sea shanties", "bpm": 95, "sp": ["2zdNjnpw2V1DBpx653KK8M"]}, {"k": "take me home country roads", "t": "Take Me Home, Country Roads", "a": ["John Denver", "Lana Del Rey"], "y": 1971, "g": "folk", "bpm": 82, "sp": ["1YYhDizHx7PnDhAhko6cDS", "7qF0FfuzBFwMe1lNHkEDxW"]}, {"k": "purple haze", "t": "Purple Haze", "a": ["Jimi Hendrix"], "y": 1997, "g": "psychedelic rock", "bpm": 109, "sp": ["4BYGxv4rxSNcTgT3DsFB9o"]}, {"k": "voodoo child", "t": "Voodoo Child", "a": ["Jimi Hendrix"], "y": 1997, "g": "psychedelic rock", "bpm": 88, "sp": ["6d3I7THB2bONUkxOo1DvmZ"]}, {"k": "little wing", "t": "Little Wing", "a": ["Jimi Hendrix"], "y": 1997, "g": "psychedelic rock", "bpm": 143, "sp": ["1xk0nRNpACW4gWbX713Oig"]}, {"k": "stranglehold", "t": "Stranglehold", "a": ["Ted Nugent"], "y": 1975, "g": "classic rock", "bpm": 148, "sp": ["2f0P7iELCvAlV8j6Z3rGDE"]}, {"k": "american woman", "t": "American Woman", "a": ["The Guess Who"], "y": 1970, "g": "classic rock", "bpm": 93, "sp": ["0emHuukZSuaOzOlsAWHj2W"]}, {"k": "rock and roll", "t": "Rock and Roll", "a": ["Led Zeppelin"], "y": 1971, "g": "classic rock", "bpm": 170, "sp": ["4PRGxHpCpF2yoOHYKQIEwD"]}, {"k": "moneytalks", "t": "Moneytalks", "a": ["AC/DC"], "y": 1990, "g": "rock", "bpm": 122, "sp": ["5u5F7qLDvZjBSktaDp4HxB"]}, {"k": "we are young", "t": "We Are Young", "a": ["fun.", "Janelle Monáe"], "y": 2012, "g": "alternative r&b", "bpm": 184, "sp": ["7a86XRg84qjasly9f6bPSD"]}, {"k": "human", "t": "Human", "a": ["Rag'n'Bone Man"], "y": 2017, "g": "", "bpm": 75, "sp": ["58zsLZPvfflaiIbNWoA22O"]}, {"k": "ordinary", "t": "Ordinary", "a": ["Alex Warren"], "y": 2024, "g": "", "bpm": 168, "sp": ["2RkZ5LkEzeHGRsmDqKwmaJ"]}, {"k": "thunder", "t": "Thunder", "a": ["Imagine Dragons"], "y": 2017, "g": "", "bpm": 168, "sp": ["1zB4vmk8tFRmM9UULNzbLB"]}, {"k": "lose control", "t": "Lose Control", "a": ["Teddy Swims"], "y": 2023, "g": "", "bpm": 160, "sp": ["17phhZDn6oGtzMe56NuWvj"]}, {"k": "astronaut in the ocean", "t": "Astronaut In The Ocean", "a": ["Masked Wolf"], "y": 2021, "g": "", "bpm": 150, "sp": ["6E90gq0KO6FYZVOXx8kCcC"]}, {"k": "islands in the stream", "t": "Islands In the Stream", "a": ["Dolly Parton", "Kenny Rogers"], "y": 1982, "g": "country", "bpm": 204, "sp": ["6dnco8haegnJYtylV26cBq"]}, {"k": "tuesdays gone", "t": "Tuesday's Gone", "a": ["Lynyrd Skynyrd"], "y": 1973, "g": "southern rock", "bpm": 146, "sp": ["64sn7wgJfeQKY3Jisnl59w"]}, {"k": "uptown girl", "t": "Uptown Girl", "a": ["Billy Joel"], "y": 1983, "g": "soft rock", "bpm": 129, "sp": ["5zA8vzDGqPl2AzZkEYQGKh"]}, {"k": "here comes the sun", "t": "Here Comes The Sun", "a": ["The Beatles"], "y": 1969, "g": "classic rock", "bpm": 129, "sp": ["6dGnYIeXmHdcikdzNNDMm2"]}, {"k": "walk of life", "t": "Walk of Life", "a": ["Dire Straits"], "y": 1985, "g": "classic rock", "bpm": 172, "sp": ["423o3ZHIaBtGXyhF1uH41a"]}, {"k": "brandy", "t": "Brandy", "a": ["Looking Glass"], "y": 1972, "g": "yacht rock", "bpm": 125, "sp": ["2BY7ALEWdloFHgQZG6VMLA"]}, {"k": "i heard it through the grapevine", "t": "I Heard It Through The Grapevine", "a": ["Creedence Clearwater Revival"], "y": 2019, "g": "classic rock", "bpm": 118, "sp": ["2tpPgG8Xkdbhn5xf77EVPP"]}, {"k": "old man", "t": "Old Man", "a": ["Neil Young"], "y": 1972, "g": "classic rock", "bpm": 141, "sp": ["6grFWYpLQul3nAHjzzPKT8"]}, {"k": "another brick in the wall pt 2", "t": "Another Brick in the Wall, Pt. 2", "a": ["Pink Floyd"], "y": 1979, "g": "progressive rock", "bpm": 104, "sp": ["4gMgiXfqyzZLMhsksGmbQV"]}, {"k": "green river", "t": "Green River", "a": ["Creedence Clearwater Revival"], "y": 1969, "g": "classic rock", "bpm": 142, "sp": ["11DjZQEZ69EXLo77HVj6yW"]}, {"k": "the weight", "t": "The Weight", "a": ["The Band"], "y": 1968, "g": "folk rock", "bpm": 144, "sp": ["0P7DoyGrr4Wp9w5TotEtUC"]}, {"k": "out west", "t": "OUT WEST", "a": ["JACKBOYS", "Travis Scott"], "y": 2019, "g": "rap", "bpm": 140, "sp": ["6gi6y1xwmVszDWkUqab1qw"]}, {"k": "the time of my life", "t": "The Time Of My Life", "a": ["Bill Medley", "Jennifer Warnes"], "y": 1988, "g": "", "bpm": 108, "sp": ["2JCTiiJQFWQNC0Zp8rsJRB"]}, {"k": "bad medicine", "t": "Bad Medicine", "a": ["Bon Jovi"], "y": 1988, "g": "glam metal", "bpm": 119, "sp": ["72hcFp4tYkd3dbNA9dZ3Pv"]}, {"k": "sweet emotion", "t": "Sweet Emotion", "a": ["Aerosmith"], "y": 1975, "g": "classic rock", "bpm": 99, "sp": ["73TxYZd0lBCVRrHawrAglA"]}, {"k": "pour some sugar on me", "t": "Pour Some Sugar On Me", "a": ["Def Leppard"], "y": 1987, "g": "glam metal", "bpm": 85, "sp": ["0PdM2a6oIjqepoEfcJo0RO"]}, {"k": "walk this way", "t": "Walk This Way", "a": ["Aerosmith"], "y": 1975, "g": "classic rock", "bpm": 109, "sp": ["4JfuiOWlWCkjP6OKurHjSn"]}, {"k": "no one like you", "t": "No One Like You", "a": ["Scorpions"], "y": 1982, "g": "hard rock", "bpm": 118, "sp": ["26fZwf1ImE4aUJ4XaqOkUg"]}, {"k": "tnt", "t": "T.N.T", "a": ["AC/DC"], "y": 1976, "g": "rock", "bpm": 126, "sp": ["7LRMbd3LEoV5wZJvXT1Lwb"]}, {"k": "janies got a gun", "t": "Janie's Got A Gun", "a": ["Aerosmith"], "y": 1994, "g": "classic rock", "bpm": 115, "sp": ["5fMwvrqujbQjUxcNPcYrUF"]}, {"k": "sharp dressed man", "t": "Sharp Dressed Man", "a": ["ZZ Top"], "y": 2014, "g": "southern rock", "bpm": 127, "sp": ["15mLZ2fY0LoJyjWs1wrtgs"]}, {"k": "whole lotta love", "t": "Whole Lotta Love", "a": ["Led Zeppelin"], "y": 1969, "g": "classic rock", "bpm": 90, "sp": ["0hCB0YR03f6AmQaHbwWDe8"]}, {"k": "eye of the tiger", "t": "Eye of the Tiger", "a": ["Survivor"], "y": 1982, "g": "", "bpm": 109, "sp": ["2HHtWyy5CgaQbC7XSoOb0e"]}, {"k": "back in black", "t": "Back In Black", "a": ["AC/DC"], "y": 1980, "g": "rock", "bpm": 188, "sp": ["08mG3Y1vljYA6bvDt4Wqkj"]}, {"k": "kung fu fighting", "t": "Kung Fu Fighting", "a": ["Carl Douglas"], "y": 1974, "g": "", "bpm": 102, "sp": ["7K8QsHbmUpSX37oOCL4e2g"]}, {"k": "stayin alive", "t": "Stayin' Alive", "a": ["Bee Gees"], "y": 1979, "g": "disco", "bpm": 104, "sp": ["3mRM4NM8iO7UBqrSigCQFH"]}, {"k": "you shook me all night long", "t": "You Shook Me All Night Long", "a": ["AC/DC"], "y": 1980, "g": "rock", "bpm": 127, "sp": ["2SiXAy7TuUkycRVbbWDEpo"]}, {"k": "dream on", "t": "Dream On", "a": ["Aerosmith"], "y": 1973, "g": "classic rock", "bpm": 79, "sp": ["5Ih9gbqyxCzTJ43nuSuKnC"]}, {"k": "paradise city", "t": "Paradise City", "a": ["Guns N' Roses"], "y": 1987, "g": "rock", "bpm": 100, "sp": ["6eN1f9KNmiWEhpE2RhQqB5"]}, {"k": "we will rock you", "t": "We Will Rock You", "a": ["Queen"], "y": 1977, "g": "classic rock", "bpm": 81, "sp": ["54flyrjcdnQdco7300avMJ"]}, {"k": "thunderstruck", "t": "Thunderstruck", "a": ["AC/DC"], "y": 1990, "g": "rock", "bpm": 134, "sp": ["57bgtoPSgt236HzfBOd8kj"]}, {"k": "old time rock and roll", "t": "Old Time Rock & Roll", "a": ["Bob Seger"], "y": 1978, "g": "classic rock", "bpm": 124, "sp": ["5EOoMWIB9iK4ZpcSex9Ec7"]}, {"k": "welcome to the jungle", "t": "Welcome To The Jungle", "a": ["Guns N' Roses"], "y": 1987, "g": "rock", "bpm": 124, "sp": ["0G21yYKMZoHa30cYVi1iA8"]}, {"k": "nothing else matters", "t": "Nothing Else Matters", "a": ["Metallica"], "y": 1991, "g": "metal", "bpm": 142, "sp": ["2CtemffYhT0DJWcT1XW047"]}, {"k": "we are the champions", "t": "We Are The Champions", "a": ["Queen"], "y": 1977, "g": "classic rock", "bpm": 64, "sp": ["7ccI9cStQbQdystvc6TvxD"]}, {"k": "highway to hell", "t": "Highway to Hell", "a": ["AC/DC"], "y": 1979, "g": "rock", "bpm": 116, "sp": ["2zYzyRzz6pRmhPzyfMEC8s"]}, {"k": "fortunate son", "t": "Fortunate Son", "a": ["Creedence Clearwater Revival"], "y": 1969, "g": "classic rock", "bpm": 133, "sp": ["4BP3uh0hFLFRb5cjsgLqDh"]}, {"k": "la grange", "t": "La Grange", "a": ["ZZ Top"], "y": 1973, "g": "southern rock", "bpm": 162, "sp": ["0u6JFVn0KHHlidZxNL9gVE"]}, {"k": "crazy train", "t": "Crazy Train", "a": ["Ozzy Osbourne"], "y": 2020, "g": "metal", "bpm": 138, "sp": ["7ACxUo21jtTHzy7ZEV56vU"]}, {"k": "you give love a bad name", "t": "You Give Love A Bad Name", "a": ["Bon Jovi"], "y": 1986, "g": "glam metal", "bpm": 123, "sp": ["2TofEeQobQ9YoK7EFds698"]}, {"k": "more than a feeling", "t": "More Than a Feeling", "a": ["Boston"], "y": 1976, "g": "classic rock", "bpm": 109, "sp": ["1QEEqeFIZktqIpPI4jSVSF"]}, {"k": "smoke on the water", "t": "Smoke on the Water", "a": ["Deep Purple"], "y": 1972, "g": "hard rock", "bpm": 114, "sp": ["5SAUIWdZ04OxYfJFDchC7S"]}, {"k": "sweet child o mine", "t": "Sweet Child O' Mine", "a": ["Guns N' Roses"], "y": 1987, "g": "rock", "bpm": 125, "sp": ["7snQQk1zcKl8gZ92AnueZW"]}, {"k": "numb", "t": "Numb", "a": ["Linkin Park"], "y": 2003, "g": "nu metal", "bpm": 110, "sp": ["2nLtzopw4rPReszdYBJU6h"]}, {"k": "my own summer", "t": "My Own Summer", "a": ["Deftones"], "y": 1997, "g": "nu metal", "bpm": 72, "sp": ["1158ckiB5S4cpsdYHDB9IF"]}, {"k": "sabotage", "t": "Sabotage", "a": ["Beastie Boys"], "y": 1994, "g": "rap rock", "bpm": 168, "sp": ["0Puj4YlTm6xNzDDADXHMI9"]}, {"k": "bring me to life", "t": "Bring Me To Life", "a": ["Evanescence"], "y": 2003, "g": "alternative metal", "bpm": 95, "sp": ["0COqiPhxzoWICwFCS4eZcp"]}, {"k": "man in the box", "t": "Man in the Box", "a": ["Alice In Chains"], "y": 1990, "g": "grunge", "bpm": 106, "sp": ["6gZVQvQZOFpzIy3HblJ20F"]}, {"k": "she hates me", "t": "She Hates Me", "a": ["Puddle Of Mudd"], "y": 2001, "g": "post-grunge", "bpm": 110, "sp": ["16DhvbuyvJob4Q9GHNYu2n"]}, {"k": "cant stop", "t": "Can't Stop", "a": ["Red Hot Chili Peppers"], "y": 2002, "g": "funk rock", "bpm": 91, "sp": ["3ZOEytgrvLwQaqXreDs2Jx"]}, {"k": "mother", "t": "Mother", "a": ["Danzig"], "y": 1988, "g": "horror punk", "bpm": 148, "sp": ["7txxAtOMwLLnQTpKeBL6bp"]}, {"k": "higher", "t": "Higher", "a": ["Creed"], "y": 1999, "g": "post-grunge", "bpm": 156, "sp": ["1ZozJfi8u9cO2Ob8KwiwNT"]}, {"k": "guerrilla radio", "t": "Guerrilla Radio", "a": ["Rage Against The Machine"], "y": 1999, "g": "rap metal", "bpm": 104, "sp": ["1wsRitfRRtWyEapl0q22o8"]}, {"k": "the kids arent alright", "t": "The Kids Aren't Alright", "a": ["The Offspring"], "y": 1998, "g": "punk", "bpm": 100, "sp": ["4EchqUKQ3qAQuRNKmeIpnf"]}, {"k": "sober", "t": "Sober", "a": ["TOOL"], "y": 1993, "g": "progressive metal", "bpm": 149, "sp": ["6DyywdbmTzlmXBzG9ym7Rt"]}, {"k": "take a look around", "t": "Take A Look Around", "a": ["Limp Bizkit"], "y": 2000, "g": "nu metal", "bpm": 102, "sp": ["2avKuMN2QXkaG9vvHa2JLt"]}, {"k": "the beautiful people", "t": "The Beautiful People", "a": ["Marilyn Manson"], "y": 1996, "g": "industrial metal", "bpm": 144, "sp": ["2aIB1CdRRG7YLBu9hNw9nR"]}, {"k": "schism", "t": "Schism", "a": ["TOOL"], "y": 2001, "g": "progressive metal", "bpm": 107, "sp": ["55mJleti2WfWEFNFcBduhc"]}, {"k": "lost in hollywood", "t": "Lost In Hollywood", "a": ["System Of A Down"], "y": 2005, "g": "nu metal", "bpm": 156, "sp": ["0GrHWVTDsaWcD4nrCGr7VE"]}, {"k": "chop suey", "t": "Chop Suey!", "a": ["System Of A Down"], "y": 2001, "g": "nu metal", "bpm": 127, "sp": ["2DlHlPMa4M17kufBvI2lEN"]}, {"k": "killing in the name", "t": "Killing In The Name", "a": ["Rage Against The Machine"], "y": 1992, "g": "rap metal", "bpm": 89, "sp": ["59WN2psjkt1tyaxjspN8fp"]}, {"k": "down with the sickness", "t": "Down with the Sickness", "a": ["Disturbed"], "y": 2000, "g": "metal", "bpm": 90, "sp": ["40rvBMQizxkIqnjPdEWY1v"]}, {"k": "soul man", "t": "Soul Man", "a": ["Sam & Dave"], "y": 1967, "g": "motown", "bpm": 112, "sp": ["4eGHlplaq1ME8oetnTuFFf"]}, {"k": "brick house", "t": "Brick House", "a": ["Commodores"], "y": 1977, "g": "motown", "bpm": 108, "sp": ["5VJjhHyG8NZ5xdgG6uTb3P"]}, {"k": "kashmir", "t": "Kashmir", "a": ["Led Zeppelin"], "y": 1975, "g": "classic rock", "bpm": 81, "sp": ["6Vjk8MNXpQpi0F4BefdTyq"]}, {"k": "layla", "t": "Layla", "a": ["Derek & The Dominos"], "y": 1970, "g": "blues rock", "bpm": 116, "sp": ["2kkvB3RNRzwjFdGhaUA0tz"]}, {"k": "who are you", "t": "Who Are You", "a": ["The Who"], "y": 1978, "g": "classic rock", "bpm": 156, "sp": ["23IJ5wLRhEZ9DOuia5mPiZ"]}, {"k": "slow ride", "t": "Slow Ride", "a": ["Foghat"], "y": 1975, "g": "classic rock", "bpm": 114, "sp": ["4MYb7NWLwXNDB7bYs3HeX8"]}, {"k": "are you gonna go my way", "t": "Are You Gonna Go My Way", "a": ["Lenny Kravitz"], "y": 1993, "g": "", "bpm": 129, "sp": ["45Ia1U4KtIjAPPU7Wv1Sea"]}, {"k": "purple rain", "t": "Purple Rain", "a": ["Prince"], "y": 1984, "g": "funk", "bpm": 113, "sp": ["1uvyZBs4IZYRebHIB1747m"]}, {"k": "ptppom", "t": "PTPPOM", "a": ["Big Money Blitz", "Mohead Mike"], "y": 2024, "g": "", "bpm": 80, "sp": ["3zlcoCkzppwVEnUYKnsG9T"]}, {"k": "hell at night", "t": "Hell At Night", "a": ["BigXthaPlug", "Ella Langley"], "y": 2025, "g": "southern hip hop", "bpm": 150, "sp": ["3pAVk6Ydn0dcGpG8gDyxSJ"]}, {"k": "introduction to haircut world", "t": "Introduction to Haircut World", "a": ["TipToe Tingles ASMR"], "y": 2024, "g": "", "bpm": 74, "sp": ["7GokEJ75YfmhspUt6YT3LS"]}, {"k": "bad mouth", "t": "Bad Mouth", "a": ["Luwop"], "y": 2023, "g": "", "bpm": 125, "sp": ["5ohCXGIEO1O9CiRngSMKkZ"]}, {"k": "asmr beat to sleep i", "t": "ASMR Beat To Sleep I", "a": ["ACEFORCE ASMR"], "y": 2023, "g": "", "bpm": 48, "sp": ["7b2OuNehlmldTQMaML40Eb"]}, {"k": "lifes been good", "t": "Life's Been Good", "a": ["Joe Walsh"], "y": 1978, "g": "classic rock", "bpm": 99, "sp": ["2wvMC5EyaaYQwBfiwwY2xE"]}, {"k": "for what its worth", "t": "For What It's Worth", "a": ["Buffalo Springfield"], "y": 1966, "g": "folk rock", "bpm": 99, "sp": ["1qRA5BS78u3gME0loMl9AA"]}, {"k": "black betty", "t": "Black Betty", "a": ["Ram Jam"], "y": 1977, "g": "southern rock", "bpm": 117, "sp": ["6kooDsorCpWVMGc994XjWN"]}, {"k": "wish you were here", "t": "Wish You Were Here", "a": ["Pink Floyd"], "y": 1975, "g": "progressive rock", "bpm": 123, "sp": ["6mFkJmJqdDVQ1REhVfGgd1"]}, {"k": "better than a hallelujah", "t": "Better Than a Hallelujah", "a": ["Hallal Music"], "y": 2011, "g": "hymns", "bpm": 86, "sp": ["0bqnMv7Vs6EwmGaPRlIH90"]}, {"k": "wonderful merciful savior", "t": "Wonderful, Merciful Savior", "a": ["David Wesley"], "y": 2014, "g": "hymns", "bpm": 139, "sp": ["4GoJw5U8fLPstdlawHF2Ty"]}, {"k": "sweet caroline", "t": "Sweet Caroline", "a": ["Neil Diamond"], "y": 1969, "g": "", "bpm": 63, "sp": ["62AuGbAkt8Ox2IrFFb8GKV"]}, {"k": "golden", "t": "Golden", "a": ["Anthem Lights", "brooke"], "y": 2025, "g": "hymns", "bpm": 123, "sp": ["33M39wpPyFv3NMkf2q53QY"]}, {"k": "jump", "t": "Jump", "a": ["Van Halen"], "y": 1984, "g": "glam metal", "bpm": 130, "sp": ["7N3PAbqfTjSEU1edb2tY8j"]}, {"k": "midnight rider", "t": "Midnight Rider", "a": ["Allman Brothers Band"], "y": 1970, "g": "southern rock", "bpm": 94, "sp": ["1hHGUdFaiJHw9hVZGJWYO2"]}, {"k": "livin on a prayer", "t": "Livin' On A Prayer", "a": ["Bon Jovi"], "y": 1986, "g": "glam metal", "bpm": 123, "sp": ["0ee1DiZF94NSqqpG0XHUzH"]}, {"k": "all right now", "t": "All Right Now", "a": ["Free"], "y": 1970, "g": "classic rock", "bpm": 120, "sp": ["1gcESexgftSuLuML57Y69q"]}, {"k": "low rider", "t": "Low Rider", "a": ["War"], "y": 1975, "g": "", "bpm": 140, "sp": ["7Bz8yww6UMbTgTVLG6zbI4"]}, {"k": "hold on im comin", "t": "Hold On, I'm Comin'", "a": ["Sam & Dave"], "y": 1966, "g": "motown", "bpm": 107, "sp": ["6PgVDY8GTkxF3GmhVGPzoB"]}, {"k": "here i go again", "t": "Here I Go Again", "a": ["Whitesnake"], "y": 1987, "g": "glam metal", "bpm": 90, "sp": ["1qOU8KzFifXE9YrgjVwYvc"]}, {"k": "play that funky music", "t": "Play That Funky Music", "a": ["Wild Cherry"], "y": 1976, "g": "funk rock", "bpm": 109, "sp": ["5uuJruktM9fMdN9Va0DUMl"]}, {"k": "born to be wild", "t": "Born To Be Wild", "a": ["Steppenwolf"], "y": 1968, "g": "classic rock", "bpm": 146, "sp": ["3lN8PP6R2IxbLP05QpYXng"]}, {"k": "superstition", "t": "Superstition", "a": ["Stevie Wonder"], "y": 2002, "g": "motown", "bpm": 100, "sp": ["1h2xVEoJORqrg71HocgqXd"]}, {"k": "10000 reasons  what a beautiful name", "t": "10,000 Reasons / What a Beautiful Name", "a": ["Caleb and Kelsey"], "y": 2018, "g": "worship", "bpm": 72, "sp": ["33Ush8XeSGoH1qivkTF8ED"]}, {"k": "how far ill go", "t": "How Far I'll Go", "a": ["Alessia Cara", "Disney"], "y": 2016, "g": "", "bpm": 181, "sp": ["1ehPJRt49h6N0LoryqKZXq"]}, {"k": "what a beautiful name", "t": "What a Beautiful Name", "a": ["Voices Of Lee", "Hillsong Worship", "Brooke Ligertwood"], "y": 2017, "g": "", "bpm": 144, "sp": ["1AeAa4lCaa4lWAv7ZhLA11", "4KLj9QjEhJl2WU50mxRF9Z"]}, {"k": "no longer slaves", "t": "No Longer Slaves", "a": ["Voices Of Lee"], "y": 2017, "g": "", "bpm": 79, "sp": ["5D46BBoNg1oz6LfLD7i4AM"]}, {"k": "shallow", "t": "Shallow", "a": ["Lady Gaga", "Bradley Cooper"], "y": 2018, "g": "art pop", "bpm": 96, "sp": ["2VxeLyX666F8uXCJ0dZF8B"]}, {"k": "alone", "t": "Alone", "a": ["Heart"], "y": 1987, "g": "classic rock", "bpm": 175, "sp": ["54b8qPFqYqIndfdxiLApea"]}, {"k": "venom", "t": "Venom", "a": ["Eminem"], "y": 2018, "g": "rap", "bpm": 136, "sp": ["2SL6oP2YAEQbqsrkOzRGO4"]}, {"k": "never enough", "t": "Never Enough", "a": ["Loren Allred"], "y": 2017, "g": "", "bpm": 87, "sp": ["0Gl5s8IhMmQE5YQwM8Qx1J"]}, {"k": "never be the same", "t": "Never Be the Same", "a": ["Camila Cabello"], "y": 2018, "g": "", "bpm": 130, "sp": ["4eWQlBRaTjPPUlzacqEeoQ"]}, {"k": "i have nothing", "t": "I Have Nothing", "a": ["Whitney Houston"], "y": 1992, "g": "", "bpm": 153, "sp": ["31er9IGsfFbwqy1pH4aiTP"]}, {"k": "unbreak my heart", "t": "Un-Break My Heart", "a": ["Toni Braxton"], "y": 1996, "g": "r&b", "bpm": 110, "sp": ["5Ihd9HrPvOADyVoonH9ZjB"]}, {"k": "nothings gonna stop us now", "t": "Nothing's Gonna Stop Us Now", "a": ["Starship"], "y": 1987, "g": "", "bpm": 96, "sp": ["3X7uFMzJrEE0sxn62qd8Ch"]}, {"k": "shoop", "t": "Shoop", "a": ["Salt-N-Pepa"], "y": 2008, "g": "old school hip hop", "bpm": 97, "sp": ["2c7H254xlKoGhmZT194C0T"]}, {"k": "2 become 1", "t": "2 Become 1", "a": ["Spice Girls"], "y": 1996, "g": "", "bpm": 144, "sp": ["36AWdhZIGLUTkWpJDhe7va"]}, {"k": "the sound of silence", "t": "The Sound of Silence", "a": ["Simon & Garfunkel", "Benny Martin", "The Wong Janice"], "y": 1964, "g": "folk rock", "bpm": 107, "sp": ["5y788ya4NvwhBznoDIcXwK", "1xNacD6f4v4QvT9zkwdQeQ"]}, {"k": "wide awake", "t": "Wide Awake", "a": ["Katy Perry"], "y": 2012, "g": "pop", "bpm": 160, "sp": ["1rUQmXEy41tXwHIKFECNTa"]}, {"k": "to be with you", "t": "To Be With You", "a": ["Mr. Big"], "y": 1991, "g": "glam metal", "bpm": 83, "sp": ["0eifvmNPHWaSh4IKNR4Xva"]}, {"k": "cant help falling in love", "t": "Can't Help Falling in Love", "a": ["Haley Reinhart"], "y": 2016, "g": "", "bpm": 138, "sp": ["6yIHGmQLJxWAUZ1ZkENemN"]}, {"k": "if you love her", "t": "If You Love Her", "a": ["Forest Blakk"], "y": 2020, "g": "spoken word", "bpm": 51, "sp": ["727Z2S2mtNH46CbP9EWPwY"]}, {"k": "wherever you will go", "t": "Wherever You Will Go", "a": ["The Calling"], "y": 2001, "g": "pop rock", "bpm": 112, "sp": ["5QpaGzWp0hwB5faV8dkbAz"]}, {"k": "a thousand years", "t": "a thousand years", "a": ["Christina Perri"], "y": 2011, "g": "soft pop", "bpm": 139, "sp": ["6lanRgr6wXibZr8KgzXxBl"]}, {"k": "at last", "t": "At Last", "a": ["Etta James"], "y": 1960, "g": "soul", "bpm": 87, "sp": ["4Hhv2vrOTy89HFRcjU3QOx"]}, {"k": "rewrite the stars", "t": "Rewrite The Stars", "a": ["Zac Efron", "Zendaya"], "y": 2017, "g": "musicals", "bpm": 125, "sp": ["65fpYBrI8o2cfrwf2US4gq"]}, {"k": "all of me", "t": "All of Me", "a": ["John Legend"], "y": 2013, "g": "soft pop", "bpm": 120, "sp": ["3U4isOIWM3VvDubwSI3y7a"]}, {"k": "whatever it takes", "t": "Whatever It Takes", "a": ["Imagine Dragons"], "y": 2017, "g": "", "bpm": 135, "sp": ["6Qn5zhYkTa37e91HC1D7lb"]}, {"k": "im yours", "t": "I'm Yours", "a": ["Jason Mraz"], "y": 2008, "g": "soft pop", "bpm": 151, "sp": ["3S0OXQeoh0w6AY8WQVckRW"]}, {"k": "count on me", "t": "Count on Me", "a": ["Bruno Mars"], "y": 2010, "g": "", "bpm": 89, "sp": ["7l1qvxWjxcKpB9PCtBuTbU"]}, {"k": "if i die young", "t": "If I Die Young", "a": ["The Band Perry"], "y": 2010, "g": "country", "bpm": 131, "sp": ["4u26EevCNXMhlvE1xFBJwX"]}, {"k": "burn", "t": "Burn", "a": ["Ellie Goulding"], "y": 2012, "g": "", "bpm": 87, "sp": ["5lF0pHbsJ0QqyIrLweHJPW"]}, {"k": "cheap thrills", "t": "Cheap Thrills", "a": ["Sia"], "y": 2016, "g": "", "bpm": 90, "sp": ["3S4px9f4lceWdKf0gWciFu"]}, {"k": "antihero", "t": "Anti-Hero", "a": ["Taylor Swift"], "y": 2022, "g": "", "bpm": 97, "sp": ["0V3wPSX9ygBnCm8psDIegu"]}, {"k": "fight song", "t": "Fight Song", "a": ["Rachel Platten"], "y": 2016, "g": "", "bpm": 176, "sp": ["37f4ITSlgPX81ad2EvmVQr"]}, {"k": "secrets", "t": "Secrets", "a": ["OneRepublic"], "y": 2009, "g": "", "bpm": 148, "sp": ["1NhPKVLsHhFUHIOZ32QnS2"]}, {"k": "you broke me first", "t": "you broke me first", "a": ["Tate McRae"], "y": 2020, "g": "", "bpm": 124, "sp": ["45bE4HXI0AwGZXfZtMp8JR"]}, {"k": "stay", "t": "Stay", "a": ["Rihanna", "Mikky Ekko"], "y": 2012, "g": "", "bpm": 112, "sp": ["789CxjEOtO76BVD1A9yJQH"]}, {"k": "thank god i do", "t": "Thank God I Do", "a": ["Lauren Daigle"], "y": 2023, "g": "christian", "bpm": 94, "sp": ["2rpZ2T8xOiDnn5VpYXvwIC"]}, {"k": "love me like you do", "t": "Love Me Like You Do", "a": ["Felisja Allen", "Ellie Goulding"], "y": 2022, "g": "", "bpm": 80, "sp": ["5vgK8yfQhXcJF55QRpGkRm", "3zHq9ouUJQFQRf3cm1rRLu"]}, {"k": "river flows in you", "t": "River Flows in You", "a": ["HAUSER", "London Symphony Orchestra", "GnuS Cello"], "y": 2019, "g": "classical crossover", "bpm": 135, "sp": ["2xCtrN9PYxH6WIOUj06jM6", "5lhtmM0ZXVYTuOvEbsvp3i"]}, {"k": "titanium", "t": "Titanium", "a": ["David Guetta", "Sia"], "y": 2011, "g": "edm", "bpm": 126, "sp": ["0lHAMNU8RGiIObScrsRgmP"]}, {"k": "firework", "t": "Firework", "a": ["Katy Perry"], "y": 2010, "g": "pop", "bpm": 124, "sp": ["4r6eNCsrZnQWJzzvFh4nlg"]}, {"k": "dont cry", "t": "Don't Cry", "a": ["Guns N' Roses"], "y": 1991, "g": "rock", "bpm": 125, "sp": ["2N2yrmodOnVF10mKvItC9P"]}, {"k": "you dont own me", "t": "You Don't Own Me", "a": ["SAYGRACE", "G-Eazy"], "y": 2016, "g": "", "bpm": 186, "sp": ["6KI1ZpZWYAJLvmVhCJz65G"]}, {"k": "adis", "t": "Adiós", "a": ["Jesse & Joy"], "y": 2009, "g": "latin pop", "bpm": 100, "sp": ["1K9kurErEhKCF1YIWLmKJj"]}, {"k": "ready for it", "t": "Ready For It?", "a": ["Taylor Swift"], "y": 2017, "g": "", "bpm": 160, "sp": ["2yLa0QULdQr0qAIvVwN6B5"]}, {"k": "gratitude", "t": "Gratitude", "a": ["Brandon Lake"], "y": 2020, "g": "worship", "bpm": 156, "sp": ["0cXV6AoJBnrnrXK0toJHpB"]}, {"k": "foreplay", "t": "Foreplay", "a": ["(Hed) P.E."], "y": 2005, "g": "rap metal", "bpm": 110, "sp": ["0ZbhASdqaLsp7lnlnbdszu"]}, {"k": "get ready", "t": "Get Ready", "a": ["2 Unlimited"], "y": 1992, "g": "eurodance", "bpm": 125, "sp": ["4tvOVmc2jorV20Z2hFDtDg"]}, {"k": "back to life", "t": "Back To Life", "a": ["Soul II Soul", "Caron Wheeler"], "y": 1989, "g": "new jack swing", "bpm": 101, "sp": ["7vvRkLPIvfjjmCIqNxBuEZ"]}, {"k": "she drives me crazy", "t": "She Drives Me Crazy", "a": ["Fine Young Cannibals"], "y": 1988, "g": "", "bpm": 109, "sp": ["4d6eqRtpDX7tydHJGDZUBQ"]}, {"k": "the power", "t": "The Power", "a": ["SNAP!"], "y": 1990, "g": "eurodance", "bpm": 109, "sp": ["0nQLxiNGbbUoSGrxksETLm", "2aOnnS2ADOBxBGKawk1bhi"]}, {"k": "pure shores", "t": "Pure Shores", "a": ["All Saints"], "y": 2017, "g": "", "bpm": 101, "sp": ["2oncAh9o85pq1aswacLqAz"]}, {"k": "rhythm is a dancer", "t": "Rhythm Is A Dancer", "a": ["SNAP!"], "y": 1992, "g": "eurodance", "bpm": 124, "sp": ["4RADreHMvMkZwsPgPr9z5c"]}, {"k": "im too sexy", "t": "I'm Too Sexy", "a": ["Right Said Fred"], "y": 1992, "g": "", "bpm": 122, "sp": ["2wmnubOPY1hyR4fSaZ9o1T"]}, {"k": "praise you", "t": "Praise You", "a": ["Fatboy Slim"], "y": 2006, "g": "big beat", "bpm": 110, "sp": ["21RDsw7wzUJNl2FbWTgEfJ"]}, {"k": "be my lover", "t": "Be My Lover", "a": ["La Bouche"], "y": 1996, "g": "eurodance", "bpm": 135, "sp": ["7FoUzKTSQp25oe32pY9z5p"]}, {"k": "gonna make you sweat", "t": "Gonna Make You Sweat", "a": ["C & C Music Factory", "Freedom Williams"], "y": 2000, "g": "hip house", "bpm": 112, "sp": ["7eheoW4hxrH51ww2QePVwF", "36rXHqN7D1ETFhyKXXKs4w"]}, {"k": "cotton eye joe", "t": "Cotton Eye Joe", "a": ["Rednex"], "y": 1995, "g": "", "bpm": 132, "sp": ["0Jg602cHeMCnPez9baacIe"]}, {"k": "pump up the jam", "t": "Pump Up The Jam", "a": ["Technotronic", "Felly"], "y": 1989, "g": "eurodance", "bpm": 125, "sp": ["21qnJAMtzC6S5SESuqQLEK", "0UAEHlFR79k9CJvknSGUNf"]}, {"k": "sandstorm", "t": "Sandstorm", "a": ["Darude"], "y": 2000, "g": "eurodance", "bpm": 136, "sp": ["3dxDj8pDPlIHCIrUPXuCeG"]}, {"k": "better off alone", "t": "Better Off Alone", "a": ["Alice Deejay"], "y": 2000, "g": "eurodance", "bpm": 137, "sp": ["5XVjNRubJUW0iPhhSWpLCj"]}, {"k": "groove is in the heart", "t": "Groove Is in the Heart", "a": ["Deee-Lite"], "y": 2005, "g": "", "bpm": 122, "sp": ["2UVLuddklEVak5PXgC7baA"]}, {"k": "dirt off your shoulder", "t": "Dirt Off Your Shoulder", "a": ["JAŸ-Z"], "y": 2003, "g": "hip hop", "bpm": 164, "sp": ["3IrkbGQCoEPAkzJ0Tkv8nm"]}, {"k": "young forever", "t": "Young Forever", "a": ["JAŸ-Z", "Mr Hudson"], "y": 2009, "g": "hip hop", "bpm": 140, "sp": ["35srNkJVToAzYiZzron1FY"]}, {"k": "otis", "t": "Otis", "a": ["JAŸ-Z", "Kanye West"], "y": 2011, "g": "hip hop", "bpm": 95, "sp": ["6vegnfDS8DAEaCqWaPYGPy"]}, {"k": "drunk in love", "t": "Drunk in Love", "a": ["Beyoncé", "JAŸ-Z"], "y": 2014, "g": "hip hop", "bpm": 140, "sp": ["6jG2YzhxptolDzLHTGLt7S"]}, {"k": "love the way you lie", "t": "Love The Way You Lie", "a": ["Eminem", "Rihanna"], "y": 2010, "g": "rap", "bpm": 87, "sp": ["15JINEqzVMv3SvJTAXAKED"]}, {"k": "let her go", "t": "Let Her Go", "a": ["Passenger"], "y": 2012, "g": "folk pop", "bpm": 75, "sp": ["1KxwZYyzWNyZSRyErj2ojT"]}, {"k": "take me to church", "t": "Take Me to Church", "a": ["Hozier"], "y": 2014, "g": "", "bpm": 129, "sp": ["1CS7Sd1u5tWkstBhpssyjP"]}, {"k": "before you go", "t": "Before You Go", "a": ["Lewis Capaldi"], "y": 2019, "g": "soft pop", "bpm": 112, "sp": ["2gMXnyrvIjhVBUZwvLZDMP"]}, {"k": "someone you loved", "t": "Someone You Loved", "a": ["Lewis Capaldi"], "y": 2019, "g": "soft pop", "bpm": 110, "sp": ["7qEHsqek33rTcFNT9PFqLf"]}, {"k": "be alright", "t": "Be Alright", "a": ["Dean Lewis"], "y": 2018, "g": "", "bpm": 126, "sp": ["5JvHFo8DB7qgbGHnF5iAKU", "3EPXxR3ImUwfayaurPi3cm"]}, {"k": "too good at goodbyes", "t": "Too Good At Goodbyes", "a": ["Sam Smith"], "y": 2017, "g": "soft pop", "bpm": 92, "sp": ["1mXVgsBdtIVeCLJnSnmtdV"]}, {"k": "im not the only one", "t": "I'm Not The Only One", "a": ["Sam Smith"], "y": 2014, "g": "soft pop", "bpm": 82, "sp": ["7795WJLVKJoAyVoOtCWqXN"]}, {"k": "stay with me", "t": "Stay With Me", "a": ["Sam Smith"], "y": 2014, "g": "soft pop", "bpm": 84, "sp": ["5Nm9ERjJZ5oyfXZTECKmRt"]}, {"k": "apologize", "t": "Apologize", "a": ["OneRepublic"], "y": 2007, "g": "", "bpm": 118, "sp": ["1NrJYpdAi7uosDRPmSYrsG"]}, {"k": "thinking out loud", "t": "Thinking out Loud", "a": ["Ed Sheeran"], "y": 2013, "g": "soft pop", "bpm": 79, "sp": ["1Slwb6dOYkBlWal1PGtnNg"]}, {"k": "eyes closed", "t": "Eyes Closed", "a": ["Ed Sheeran"], "y": 2023, "g": "soft pop", "bpm": 107, "sp": ["3p7XQpdt8Dr6oMXSvRZ9bg"]}, {"k": "elastic heart", "t": "Elastic Heart", "a": ["Sia"], "y": 2014, "g": "", "bpm": 130, "sp": ["6kwAbEjseqBob48jCus7Sz", "5S9lfZu1YF8xKkgSsqL2Bd"]}, {"k": "tennessee orange", "t": "Tennessee Orange", "a": ["Megan Moroney"], "y": 2023, "g": "country", "bpm": 156, "sp": ["6DLbBlGIOjjEj0dNN25zhZ"]}, {"k": "say you wont let go", "t": "Say You Won't Let Go", "a": ["James Arthur"], "y": 2016, "g": "soft pop", "bpm": 85, "sp": ["5uCax9HTNlzGybIStD3vDh"]}, {"k": "happier than ever", "t": "Happier Than Ever", "a": ["Kelly Clarkson"], "y": 2022, "g": "christmas", "bpm": 162, "sp": ["3Wc4jQhzto9iZehUirrzcM"]}, {"k": "easy on me", "t": "Easy On Me", "a": ["Adele"], "y": 2021, "g": "soft pop", "bpm": 142, "sp": ["46IZ0fSY2mpAiktS3KOqds"]}, {"k": "someone like you", "t": "Someone Like You", "a": ["Adele"], "y": 2011, "g": "soft pop", "bpm": 135, "sp": ["1zwMYTA5nlNjZxYrvBB2pV"]}, {"k": "everything has changed", "t": "Everything Has Changed", "a": ["Taylor Swift", "Ed Sheeran"], "y": 2021, "g": "soft pop", "bpm": 80, "sp": ["7qEUFOVcxRI19tbT68JcYK"]}, {"k": "payphone", "t": "Payphone", "a": ["Maroon 5", "Wiz Khalifa"], "y": 2012, "g": "pop", "bpm": 110, "sp": ["4P0osvTXoSYZZC2n8IFH3c"]}, {"k": "all too well", "t": "All Too Well", "a": ["Taylor Swift"], "y": 2021, "g": "", "bpm": 186, "sp": ["3nsfB1vus2qaloUdcBZvDu", "5enxwA8aAbwZbf5qCHORXi"]}, {"k": "halo", "t": "Halo", "a": ["Beyoncé"], "y": 2008, "g": "", "bpm": 80, "sp": ["3ERa3mEeOnrh2Mc47qM6T1"]}, {"k": "i knew you were trouble", "t": "I Knew You Were Trouble", "a": ["Taylor Swift"], "y": 2021, "g": "", "bpm": 154, "sp": ["6AtZLIzUINvExIUy4QhdjP"]}, {"k": "cant do better", "t": "Can't Do Better", "a": ["Kim Petras"], "y": 2018, "g": "", "bpm": 132, "sp": ["7t9gDWqX10tbhtriPR1Cnd"]}, {"k": "i dont wanna live forever", "t": "I Don’t Wanna Live Forever", "a": ["ZAYN", "Taylor Swift"], "y": 2017, "g": "", "bpm": 118, "sp": ["55n9yjI6qqXh5F2mYvUc2y"]}, {"k": "teardrops on my guitar", "t": "Teardrops On My Guitar", "a": ["Taylor Swift"], "y": 2006, "g": "", "bpm": 100, "sp": ["7zMcNqs55Mxer82bvZFkpg"]}, {"k": "unholy", "t": "Unholy", "a": ["Sam Smith", "Kim Petras"], "y": 2023, "g": "soft pop", "bpm": 131, "sp": ["0NZPBYD5qbEWRs3PrGiRkT"]}, {"k": "our song", "t": "Our Song", "a": ["Taylor Swift"], "y": 2006, "g": "", "bpm": 89, "sp": ["15DeqWWQB4dcEWzJg15VrN"]}, {"k": "chandelier", "t": "Chandelier", "a": ["Sia"], "y": 2015, "g": "", "bpm": 117, "sp": ["2s1sdSqGcKxpPr5lCl7jAV"]}, {"k": "love story", "t": "Love Story", "a": ["Taylor Swift"], "y": 2021, "g": "", "bpm": 119, "sp": ["6YvqWjhGD8mB5QXcbcUKtx", "3CeCwYWvdfXbZLXFhBrbnf"]}, {"k": "unstoppable", "t": "Unstoppable", "a": ["Sia"], "y": 2016, "g": "", "bpm": 174, "sp": ["1yvMUkIOTeUNtNWlWRgANS"]}, {"k": "this love", "t": "This Love", "a": ["Taylor Swift"], "y": 2022, "g": "", "bpm": 144, "sp": ["4d1CG5ei1E2vGbvmgf5KKv"]}, {"k": "the way i loved you", "t": "The Way I Loved You", "a": ["Taylor Swift"], "y": 2021, "g": "", "bpm": 161, "sp": ["22bPsP2jCgbLUvh82U0Z3M"]}, {"k": "wildest dreams", "t": "Wildest Dreams", "a": ["Taylor Swift", "Acoustic Guitar Songs"], "y": 2014, "g": "", "bpm": 140, "sp": ["59HjlYCeBsxdI0fcm3zglw", "1Ov37jtRQ2YNAe8HzfczkL", "4QRpo0ZntAv5CFG20NIPzW"]}, {"k": "you belong with me", "t": "You Belong With Me", "a": ["Taylor Swift"], "y": 2021, "g": "", "bpm": 130, "sp": ["4P7LVHDbzn7aI6wWRh5AHc"]}, {"k": "blank space", "t": "Blank Space", "a": ["Taylor Swift"], "y": 2014, "g": "", "bpm": 96, "sp": ["1p80LdxRV74UKvL8gnD7ky"]}, {"k": "forever", "t": "Forever", "a": ["Kari Jobe Carnes"], "y": 2014, "g": "worship", "bpm": 144, "sp": ["1z5xgcRgxxGEKrXUCEFpA9"]}, {"k": "king of my heart", "t": "King of My Heart", "a": ["Bethel Music", "Steffany Gretzinger"], "y": 2017, "g": "worship", "bpm": 136, "sp": ["0qf2iUDfPDtrLeJFmOvVn6"]}, {"k": "who you say i am", "t": "Who You Say I Am", "a": ["Hillsong Worship"], "y": 2018, "g": "worship", "bpm": 172, "sp": ["0jBu6T5GgOekdHuXA5hVQM"]}, {"k": "yes i will", "t": "Yes I Will", "a": ["Vertical Worship"], "y": 2018, "g": "worship", "bpm": 75, "sp": ["1sF4VadVaVTvp9WTEy79JT"]}, {"k": "this i believe", "t": "This I Believe", "a": ["Hillsong Worship", "Matt Crocker"], "y": 2014, "g": "worship", "bpm": 142, "sp": ["4Hrr4U80Rk1tWXlP8RFTAb"]}, {"k": "build my life", "t": "Build My Life", "a": ["Housefires"], "y": 2016, "g": "worship", "bpm": 140, "sp": ["0QatL1szZzMTAfZoJKWo0s"]}, {"k": "graves into gardens", "t": "Graves Into Gardens", "a": ["Elevation Worship", "Brandon Lake"], "y": 2020, "g": "worship", "bpm": 140, "sp": ["0pNizrRmvu5S16fH6ccm0v"]}, {"k": "way maker", "t": "Way Maker", "a": ["Leeland"], "y": 2019, "g": "worship", "bpm": 136, "sp": ["40ozK0lCJ0EQzVGWsCNUhk"]}, {"k": "good good father", "t": "Good Good Father", "a": ["Chris Tomlin"], "y": 2015, "g": "christian", "bpm": 145, "sp": ["2tMjhETPLkWILXN3NnmDt3"]}, {"k": "the blessing", "t": "The Blessing", "a": ["Kari Jobe Carnes", "Cody Carnes"], "y": 2020, "g": "worship", "bpm": 140, "sp": ["2elEVvWjPZltkotzcCwKvM"]}, {"k": "king of kings", "t": "King Of Kings", "a": ["Hillsong Worship", "Brooke Ligertwood"], "y": 2019, "g": "worship", "bpm": 136, "sp": ["5E2v6b4Mo4jxuPrcK4YEIF"]}, {"k": "bawitdaba", "t": "Bawitdaba", "a": ["Kid Rock"], "y": 1998, "g": "", "bpm": 91, "sp": ["0f37VQs969vZUL4gVfHRV9"]}, {"k": "tears of the dragon", "t": "Tears of the Dragon", "a": ["Bruce Dickinson"], "y": 1994, "g": "heavy metal", "bpm": 140, "sp": ["1fvlJQrm3yoN2TpKH5FgiR"]}, {"k": "enter sandman", "t": "Enter Sandman", "a": ["Metallica"], "y": 1991, "g": "metal", "bpm": 123, "sp": ["5BIMPccDwShpXq784RJlJp", "3VqHuw0wFlIHcIPWkhIbdQ"]}, {"k": "fade to black", "t": "Fade To Black", "a": ["Metallica"], "y": 1984, "g": "metal", "bpm": 113, "sp": ["0dqGfCMAGyDgpUAgLNOjWd"]}];
+// ---------- storage (IndexedDB, optional) ----------
+const store={db:null,
+ async open(){try{this.db=await new Promise((res,rej)=>{const r=indexedDB.open('midijukebox',1);r.onupgradeneeded=()=>r.result.createObjectStore('m');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){this.db=null}},
+ put(k,v){try{if(this.db)this.db.transaction('m','readwrite').objectStore('m').put(v,k)}catch(e){}},
+ async all(){if(!this.db)return[];try{return await new Promise((res)=>{const out=[];const c=this.db.transaction('m').objectStore('m').openCursor();c.onsuccess=()=>{const x=c.result;if(x){out.push([x.key,x.value]);x.continue()}else res(out)};c.onerror=()=>res(out)})}catch(e){return[]}}};
+const midis={}; // song key -> {name, bytes, parsed}
+// ---------- matching ----------
+const STOP=new Set(['the','a','an','of','and','to','in','on','my','me','you','i','is','it','midi','mid','version','remaster','remastered','original','single','edit','live','feat','ft','kar','karaoke','by','for','with']);
+const norm=s=>s.toLowerCase().replace(/&/g,' and ').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const toks=s=>norm(s).split(' ').filter(Boolean);
+function match(fname){
+ const base=fname.replace(/\.(mid|midi|kar)$/i,'').replace(/[_\-.]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2');
+ const ft=new Set(toks(base)); const fs=' '+norm(base)+' ';
+ let best=null,bs=0;
+ for(const s of SONGS){
+  const tt=toks(s.t); const key=tt.filter(w=>!STOP.has(w)); const use=key.length?key:tt;
+  let hit=use.filter(w=>ft.has(w)).length; let sc=hit/use.length;
+  if(fs.includes(' '+norm(s.t)+' '))sc+=1;
+  for(const a of s.a){const at=toks(a).filter(w=>!STOP.has(w));if(at.length&&at.every(w=>ft.has(w)))sc+=.5}
+  sc-= Math.max(0,[...ft].filter(w=>!STOP.has(w)).length-use.length)*0.02;
+  if(midis[s.k])sc-=.01;
+  if(sc>bs){bs=sc;best=s}
+ }
+ return bs>=0.99?best:null;
+}
+// ---------- MIDI parser ----------
+function parseMidi(buf){
+ const d=new DataView(buf);let p=0;
+ const str=n=>{let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(d.getUint8(p++));return s};
+ const u32=()=>{const v=d.getUint32(p);p+=4;return v},u16=()=>{const v=d.getUint16(p);p+=2;return v};
+ const vlq=()=>{let v=0,b;do{b=d.getUint8(p++);v=(v<<7)|(b&127)}while(b&128);return v};
+ // find MThd (RIFF-wrapped files too)
+ const bytes=new Uint8Array(buf);let start=-1;for(let i=0;i<Math.min(bytes.length-4,4096);i++){if(bytes[i]==77&&bytes[i+1]==84&&bytes[i+2]==104&&bytes[i+3]==100){start=i;break}}
+ if(start<0)throw Error('not a MIDI file');p=start+4;
+ const hl=u32();const fmt=u16(),ntr=u16(),div=u16();p=start+8+hl;
+ if(div&0x8000)throw Error('SMPTE timing not supported');
+ const ev=[];
+ for(let t=0;t<ntr&&p<d.byteLength-8;t++){
+  const id=str(4),len=u32(),end=Math.min(p+len,d.byteLength);
+  if(id!=='MTrk'){p=end;t--;continue}
+  let tick=0,run=0,ord=0;
+  while(p<end){
+   tick+=vlq();let st=d.getUint8(p);
+   if(st<0x80){st=run}else{p++;if(st<0xF0)run=st}
+   const ty=st&0xF0,ch=st&15;
+   if(st===0xFF){const m=d.getUint8(p++),l=vlq();if(m===0x51)ev.push({tick,o:ord++,tr:t,k:'tempo',v:(d.getUint8(p)<<16)|(d.getUint8(p+1)<<8)|d.getUint8(p+2)});else if(m===0x03&&t<=1&&!ev.title){let s='';for(let i=0;i<l;i++)s+=String.fromCharCode(d.getUint8(p+i));ev.title=s}p+=l}
+   else if(st===0xF0||st===0xF7){p+=vlq()}
+   else if(ty===0x80||ty===0x90){const n=d.getUint8(p++),v=d.getUint8(p++);ev.push({tick,o:ord++,tr:t,k:(ty===0x90&&v)?'on':'off',ch,n,v})}
+   else if(ty===0xA0){p+=2}
+   else if(ty===0xB0){const c=d.getUint8(p++),v=d.getUint8(p++);ev.push({tick,o:ord++,tr:t,k:'cc',ch,c,v})}
+   else if(ty===0xC0){ev.push({tick,o:ord++,tr:t,k:'prog',ch,v:d.getUint8(p++)})}
+   else if(ty===0xD0){p+=1}
+   else if(ty===0xE0){const a=d.getUint8(p++),b=d.getUint8(p++);ev.push({tick,o:ord++,tr:t,k:'bend',ch,v:((b<<7)|a)-8192})}
+   else{break}
+  }
+  p=end;
+ }
+ ev.sort((a,b)=>a.tick-b.tick||(a.k==='tempo'?-1:b.k==='tempo'?1:0)||(a.k==='off'?-1:b.k==='off'?1:0)||a.tr-b.tr||a.o-b.o);
+ let tempo=500000,lt=0,ls=0;const sec=tk=>ls+(tk-lt)*tempo/1e6/div;
+ const prog=new Array(16).fill(0),vol=new Array(16).fill(100),expr=new Array(16).fill(127),pan=new Array(16).fill(64),sus=new Array(16).fill(false);
+ const open={},held=Array.from({length:16},()=>[]),notes=[],bends=[];
+ const close=(nt,t)=>{nt.d=Math.max(.03,t-nt.t);notes.push(nt)};
+ for(const e of ev){
+  const t=sec(e.tick);
+  if(e.k==='tempo'){ls=t;lt=e.tick;tempo=e.v||500000;continue}
+  const ch=e.ch;
+  if(e.k==='on'){const key=ch*128+e.n;if(open[key]){close(open[key],t)}open[key]={t,ch,n:e.n,v:e.v,p:prog[ch],g:vol[ch]*expr[ch]/(127*127),pan:pan[ch]}}
+  else if(e.k==='off'){const key=ch*128+e.n;const nt=open[key];if(nt){delete open[key];if(sus[ch]&&ch!==9)held[ch].push(nt);else close(nt,t)}}
+  else if(e.k==='prog')prog[ch]=e.v;
+  else if(e.k==='cc'){if(e.c===7)vol[ch]=e.v;else if(e.c===11)expr[ch]=e.v;else if(e.c===10)pan[ch]=e.v;else if(e.c===64){const on=e.v>=64;if(!on&&sus[ch]){held[ch].forEach(n=>close(n,t));held[ch]=[]}sus[ch]=on}else if(e.c===121){vol[ch]=100;expr[ch]=127;pan[ch]=64}}
+  else if(e.k==='bend')bends.push({t,ch,v:e.v});
+ }
+ const endT=ev.length?sec(ev[ev.length-1].tick):0;
+ Object.values(open).forEach(n=>close(n,Math.max(endT,n.t+.5)));held.forEach(h=>h.forEach(n=>close(n,endT)));
+ notes.sort((a,b)=>a.t-b.t);
+ const dur=notes.reduce((m,n)=>Math.max(m,n.t+n.d),0);
+ return {notes,bends,dur,title:ev.title||''};
+}
+// ---------- synth ----------
+let ctx=null,master,comp,analyser,dry,noiseBuf,revIn;
+function initAudio(){
+ if(ctx)return;ctx=new (window.AudioContext||window.webkitAudioContext)();
+ comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;
+ master=ctx.createGain();master.gain.value=vol.value/100*0.8;
+ analyser=ctx.createAnalyser();analyser.fftSize=1024;
+ dry=ctx.createGain();dry.connect(comp);
+ // simple reverb
+ const conv=ctx.createConvolver();const L=ctx.sampleRate*1.8,ir=ctx.createBuffer(2,L,ctx.sampleRate);
+ for(let c=0;c<2;c++){const b=ir.getChannelData(c);for(let i=0;i<L;i++)b[i]=(Math.random()*2-1)*Math.pow(1-i/L,3)}
+ conv.buffer=ir;revIn=ctx.createGain();revIn.gain.value=.18;revIn.connect(conv);conv.connect(comp);
+ comp.connect(master);master.connect(analyser);analyser.connect(ctx.destination);
+ noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const nb=noiseBuf.getChannelData(0);for(let i=0;i<nb.length;i++)nb[i]=Math.random()*2-1;
+ drawViz();
+}
+const hz=n=>440*Math.pow(2,(n-69)/12);
+function fam(p){
+ if(p<8)return{w:['triangle','sine'],a:.004,dec:1.6,s:.0,r:.25,f:5000,lvl:.55,mix:[1,.5]};
+ if(p<16)return{w:['sine','sine'],a:.002,dec:.9,s:0,r:.3,f:8000,lvl:.5,mult:[1,4],mix:[1,.25]};
+ if(p<24)return{w:['square','sine'],a:.01,s:.8,r:.08,f:2400,lvl:.25,mix:[.6,1]};
+ if(p<29)return{w:['sawtooth','triangle'],a:.003,dec:1.1,s:.08,r:.15,f:2600,lvl:.35,pluck:1,mix:[.6,1]};
+ if(p<32)return{w:['sawtooth','sawtooth'],a:.005,s:.75,r:.12,f:3200,lvl:.22,det:9,drive:1};
+ if(p<40)return{w:['triangle','sawtooth'],a:.005,dec:.8,s:.5,r:.08,f:900,lvl:.6,mix:[1,.35]};
+ if(p<56)return{w:['sawtooth','sawtooth'],a:p<48?.08:.15,s:.85,r:.35,f:2600,lvl:.2,det:7};
+ if(p<64)return{w:['sawtooth','square'],a:.03,s:.8,r:.12,f:2000,lvl:.22,mix:[1,.3],swell:1};
+ if(p<72)return{w:['square','triangle'],a:.03,s:.85,r:.1,f:1800,lvl:.2,mix:[.6,1]};
+ if(p<80)return{w:['sine','triangle'],a:.04,s:.9,r:.12,f:4000,lvl:.35,mix:[1,.3]};
+ if(p<88)return{w:['square','sawtooth'],a:.01,s:.85,r:.12,f:3500,lvl:.2,det:6};
+ if(p<96)return{w:['sawtooth','triangle'],a:.3,s:.9,r:.6,f:1500,lvl:.22,det:10};
+ return{w:['triangle','square'],a:.01,dec:.6,s:.3,r:.2,f:2500,lvl:.3,mix:[1,.2]};
+}
+const live=[];// active voices {end,ch,oscs}
+const bendBy=new Array(16).fill(0);
+function voice(n,when,speed){
+ const d=n.d/speed,vel=n.v/127,g0=vel*vel*n.g;
+ const out=ctx.createGain();out.gain.value=0;
+ let node=out;
+ if(ctx.createStereoPanner){const pn=ctx.createStereoPanner();pn.pan.value=(n.pan-64)/64*.8;out.connect(pn);node=pn}
+ node.connect(dry);node.connect(revIn);
+ if(n.ch===9)return drum(n.n,when,g0,out);
+ const f=fam(n.p),fr=hz(n.n),oscs=[];
+ const filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=Math.min(16000,f.f*(.6+vel*.8));filt.Q.value=.7;
+ let tail=filt;
+ if(f.drive){const ws=ctx.createWaveShaper(),c=new Float32Array(256);for(let i=0;i<256;i++){const x=i/128-1;c[i]=Math.tanh(x*4)}ws.curve=c;filt.connect(ws);tail=ws}
+ tail.connect(out);
+ f.w.forEach((w,i)=>{const o=ctx.createOscillator();o.type=w;o.frequency.value=fr*((f.mult&&f.mult[i])||1);o.detune.value=(f.det?(i?f.det:-f.det):0)+bendBy[n.ch];
+  const gg=ctx.createGain();gg.gain.value=(f.mix?f.mix[i]:.7);o.connect(gg);gg.connect(filt);o.start(when);oscs.push(o)});
+ if(f.pluck){filt.frequency.setValueAtTime(f.f*2,when);filt.frequency.exponentialRampToValueAtTime(Math.max(300,f.f*.5),when+.4)}
+ const pk=g0*f.lvl,G=out.gain,end=when+d;
+ G.setValueAtTime(0,when);G.linearRampToValueAtTime(pk,when+f.a);
+ if(f.dec){G.setTargetAtTime(pk*f.s,when+f.a,f.dec/3)}else G.linearRampToValueAtTime(pk*f.s,when+f.a+.08);
+ G.cancelScheduledValues(end);G.setTargetAtTime(0,Math.max(end,when+f.a),f.r/3);
+ const stop=end+f.r*3+.05;oscs.forEach(o=>o.stop(stop));
+ live.push({start:when,end:stop,ch:n.ch,oscs,det:f.det||0});
+}
+function noise(when,dur,type,freq,g,out,q){const s=ctx.createBufferSource();s.buffer=noiseBuf;const fl=ctx.createBiquadFilter();fl.type=type;fl.frequency.value=freq;if(q)fl.Q.value=q;const gg=ctx.createGain();gg.gain.setValueAtTime(g,when);gg.gain.exponentialRampToValueAtTime(.001,when+dur);s.connect(fl);fl.connect(gg);gg.connect(out);s.start(when);s.stop(when+dur+.05)}
+function tone(when,f1,f2,dur,g,out,type){const o=ctx.createOscillator();o.type=type||'sine';o.frequency.setValueAtTime(f1,when);o.frequency.exponentialRampToValueAtTime(f2,when+dur*.6);const gg=ctx.createGain();gg.gain.setValueAtTime(g,when);gg.gain.exponentialRampToValueAtTime(.001,when+dur);o.connect(gg);gg.connect(out);o.start(when);o.stop(when+dur+.05)}
+function drum(k,w,g,out){
+ out.gain.value=1;g*=1.1;
+ if(k===35||k===36)tone(w,150,45,.35,g*1.2,out);
+ else if(k===38||k===40||k===37){noise(w,.18,'highpass',1200,g*.6,out);tone(w,220,150,.12,g*.5,out,'triangle')}
+ else if(k===39)noise(w,.15,'bandpass',1500,g*.7,out,1);
+ else if(k===42||k===44)noise(w,.05,'highpass',7000,g*.35,out);
+ else if(k===46)noise(w,.3,'highpass',6500,g*.35,out);
+ else if([41,43,45,47,48,50].includes(k))tone(w,{41:90,43:110,45:130,47:150,48:175,50:200}[k],60,.3,g*.8,out);
+ else if(k===49||k===57||k===52||k===55)noise(w,1.4,'highpass',5000,g*.4,out);
+ else if(k===51||k===59||k===53)noise(w,.6,'bandpass',8000,g*.3,out,2);
+ else if(k===54||k===69||k===70)noise(w,.08,'highpass',9000,g*.3,out);
+ else if(k===56)tone(w,800,800,.15,g*.3,out,'square');
+ else noise(w,.1,'bandpass',3000,g*.3,out,1);
+}
+// ---------- transport ----------
+const S={song:null,data:null,playing:false,base:0,offset:0,ni:0,bi:0,timer:null,speed:1,shuffle:false};
+const now=()=>S.playing?(ctx.currentTime-S.base):S.offset;
+function stopVoices(){const t=ctx?ctx.currentTime:0;live.forEach(v=>v.oscs.forEach(o=>{try{o.stop(t)}catch(e){}}));live.length=0}
+function play(from){
+ initAudio();ctx.resume();stopVoices();bendBy.fill(0);
+ S.offset=from;S.base=ctx.currentTime+.08-from;S.playing=true;
+ S.ni=lowerBound(S.data.notes,from);S.bi=lowerBound(S.data.bends,from);
+ clearInterval(S.timer);S.timer=setInterval(tick,40);tick();ui();
+}
+function lowerBound(a,t){let l=0,h=a.length;while(l<h){const m=(l+h)>>1;if(a[m].t<t)l=m+1;else h=m}return l}
+function tick(){
+ const ahead=ctx.currentTime+.25,D=S.data;
+ while(S.ni<D.notes.length&&S.base+D.notes[S.ni].t<ahead){const n=D.notes[S.ni++];
+  // apply bends before this note
+  while(S.bi<D.bends.length&&D.bends[S.bi].t<=n.t)applyBend(D.bends[S.bi++]);
+  if(live.length>96){const v=live.shift();v.oscs.forEach(o=>{try{o.stop(Math.max(ctx.currentTime,v.start)+.01)}catch(e){}})}
+  voice(n,Math.max(ctx.currentTime,S.base+n.t),1)}
+ while(S.bi<D.bends.length&&S.base+D.bends[S.bi].t<ahead)applyBend(D.bends[S.bi++]);
+ const t=ctx.currentTime;for(let i=live.length-1;i>=0;i--)if(live[i].end<t)live.splice(i,1);
+ if(now()>D.dur+.6){next(true)}
+}
+function applyBend(b){const c=b.v/8192*200;bendBy[b.ch]=c;const when=Math.max(ctx.currentTime,S.base+b.t);
+ live.forEach(v=>{if(v.ch===b.ch&&v.end>when)v.oscs.forEach((o,i)=>o.detune.setValueAtTime(c+(v.det?(i?v.det:-v.det):0),when))})}
+function pause(){if(!S.playing)return;S.offset=now();S.playing=false;clearInterval(S.timer);stopVoices();ui()}
+async function load(song,autoplay=true){
+ const m=midis[song.k];if(!m)return;
+ try{if(!m.parsed)m.parsed=parseMidi(m.bytes);}catch(e){logL('x','Could not read '+m.name+': '+e.message);return}
+ if(S.playing)pause();S.song=song;S.data=m.parsed;S.offset=0;
+ if(autoplay)play(0);ui();render();
+}
+function playable(){return view().filter(s=>midis[s.k])}
+function next(auto){const L=playable();if(!L.length){pause();return}
+ let i=L.indexOf(S.song);const n=S.shuffle?L[Math.floor(Math.random()*L.length)]:L[(i+1)%L.length];
+ if(auto&&!S.shuffle&&i===L.length-1){pause();S.offset=0;ui();return}load(n)}
+function prev(){if(now()>3){play(0);return}const L=playable();let i=L.indexOf(S.song);if(L.length)load(L[(i-1+L.length)%L.length])}
+// ---------- UI ----------
+const $=id=>document.getElementById(id);
+const fmt=t=>{t=Math.max(0,t|0);return (t/60|0)+':'+String(t%60).padStart(2,'0')};
+let filter='all';
+function view(){const q=norm($('q').value);return SONGS.filter(s=>(!q||norm(s.t+' '+s.a.join(' ')).includes(q))&&(filter==='all'||(filter==='has')===!!midis[s.k]))}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){
+ const L=view();
+ $('list').innerHTML=L.length?L.map((s,i)=>{const has=!!midis[s.k];const q=encodeURIComponent(s.t+' '+(s.a[0]||''));
+  return `<div class="row ${has?'has':''} ${S.song===s?'playing':''}" data-k="${s.k}">
+   <div class="num">${S.song===s&&S.playing?'♪':has?'●':SONGS.indexOf(s)+1}</div>
+   <div><div class="t">${esc(s.t)}${s.y?`<span class="tag">${s.y}</span>`:''}</div><div class="a">${esc(s.a.join(' · '))}${has?' — <span style="color:var(--ok)">'+esc(midis[s.k].name)+'</span>':''}</div></div>
+   <div class="acts">${s.sp&&s.sp.length?`<a class="btn sp" target="_blank" rel="noopener" href="https://open.spotify.com/track/${s.sp[0]}" title="Play on Spotify">▶ Spotify</a>`:''}${has?'<button class="btn go" data-act="play">▶ Play</button>':`<a class="btn" target="_blank" rel="noopener" href="https://bitmidi.com/search?q=${q}" data-act="find">Find</a><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}+midi+file">Web</a>`}<button class="btn" data-act="load">${has?'Swap':'Load'}</button></div></div>`}).join(''):'<div class="empty">No songs here yet.</div>';
+ const n=SONGS.filter(s=>midis[s.k]).length;$('cnt').textContent=n+' / '+SONGS.length;$('prog').style.width=(n/SONGS.length*100)+'%';
+ $('sub').textContent=SONGS.length+' songs from your Spotify list';
+}
+function ui(){
+ $('play').textContent=S.playing?'❚❚':'▶';
+ if(S.song){$('nt').textContent=S.song.t;$('na').textContent=S.song.a.join(' · ')+(S.data&&S.data.isTest?'':' (MIDI)')}
+ $('dur').textContent=fmt(S.data?S.data.dur:0);$('shuf').classList.toggle('on',S.shuffle);
+ document.querySelectorAll('.row').forEach(r=>{const on=S.song&&r.dataset.k===S.song.k;r.classList.toggle('playing',on);const nm=r.querySelector('.num');if(on)nm.textContent=S.playing?'♪':'●';else if(nm.textContent==='♪')nm.textContent='●'});
+}
+setInterval(()=>{if(!S.data)return;const t=now();$('cur').textContent=fmt(t);if(!dragging)$('pos').value=Math.min(1000,t/S.data.dur*1000)},250);
+let dragging=false;
+$('pos').addEventListener('input',()=>{dragging=true;if(S.data)$('cur').textContent=fmt($('pos').value/1000*S.data.dur)});
+$('pos').addEventListener('change',()=>{dragging=false;if(!S.data)return;const t=$('pos').value/1000*S.data.dur;if(S.playing)play(t);else S.offset=t});
+$('vol').addEventListener('input',()=>{if(master)master.gain.value=$('vol').value/100*.8});
+$('play').onclick=()=>{if(!S.data){const L=playable();if(L.length)load(L[0]);else test();return}S.playing?pause():play(S.offset>=S.data.dur?0:S.offset)};
+$('next').onclick=()=>next(false);$('prev').onclick=prev;
+$('shuf').onclick=()=>{S.shuffle=!S.shuffle;ui()};
+$('test').onclick=test;
+$('q').oninput=render;
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{filter=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render()});
+let target=null;
+$('list').addEventListener('click',e=>{const r=e.target.closest('.row');if(!r)return;const s=SONGS.find(x=>x.k===r.dataset.k);const act=e.target.dataset.act;
+ if(act==='load'){target=s;$('one').value='';$('one').click();return}
+ if(e.target.closest('a')){lastAsked=s;return}
+ if(midis[s.k]){if(S.song===s&&S.data){S.playing?pause():play(S.offset)}else load(s)}});
+$('one').onchange=async()=>{const f=$('one').files[0];if(f&&target){if(await addFile(f,target)){render();updNM();load(target);return}}render()};
+$('file').onchange=()=>addFiles($('file').files);
+const dz=$('drop');['dragenter','dragover'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',async e=>addFiles(await fromDrop(e.dataTransfer)));
+document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',async e=>{e.preventDefault();if(!dz.contains(e.target))addFiles(await fromDrop(e.dataTransfer))});
+function logL(c,t){const d=document.createElement('div');d.className=c;d.textContent=t;$('log').prepend(d)}
+async function addFile(f,song){
+ const bytes=await f.arrayBuffer();
+ try{const parsed=parseMidi(bytes);if(!parsed.notes.length)throw Error('no notes')
+  midis[song.k]={name:f.name,bytes,parsed};store.put(song.k,{name:f.name,bytes});logL('m','✓ '+f.name+' → '+song.t);return true}
+ catch(e){logL('x','✗ '+f.name+': '+e.message);return false}
+}
+async function addFiles(list){
+ let files=[];for(const f of list){if(/\.zip$/i.test(f.name)){try{const z=await unzip(await f.arrayBuffer());logL('m','📦 '+f.name+': '+z.length+' MIDI files');files.push(...z)}catch(e){logL('x','✗ '+f.name+': '+e.message)}}else files.push(f)}
+ files=files.filter(f=>{if(/\.(mid|midi|kar)$/i.test(f.name))return true;if(list.length<5)logL('x','✗ '+f.name+': not a .mid file');return false});
+ let first=null;
+ for(const f of files){
+  let s=match(f.name);
+  if(!s){try{const p=parseMidi(await f.arrayBuffer());if(p.title)s=match(p.title)}catch(e){}}
+  if(!s&&files.length===1&&lastAsked&&!midis[lastAsked.k])s=lastAsked;
+  if(!s){logL('x','? '+f.name+': no matching song — use Load on its row');continue}
+  if(await addFile(f,s)&&!first)first=s}
+ render();updNM();
+ if(files.length===1&&first)load(first);else ui();
+}
+// ---------- zip + folders ----------
+async function unzip(buf){
+ const d=new DataView(buf),u8=new Uint8Array(buf),out=[];let e=-1;
+ for(let i=u8.length-22;i>=Math.max(0,u8.length-66000);i--)if(d.getUint32(i,true)===0x06054b50){e=i;break}
+ if(e<0)throw Error('bad zip');let p=d.getUint32(e+16,true);const n=d.getUint16(e+10,true);
+ for(let i=0;i<n;i++){const m=d.getUint16(p+10,true),cs=d.getUint32(p+20,true),fl=d.getUint16(p+28,true),xl=d.getUint16(p+30,true),cl=d.getUint16(p+32,true),off=d.getUint32(p+42,true);
+  const name=new TextDecoder().decode(u8.subarray(p+46,p+46+fl));p+=46+fl+xl+cl;
+  if(!/\.(mid|midi|kar)$/i.test(name)||name.includes('__MACOSX'))continue;
+  const ds=off+30+d.getUint16(off+26,true)+d.getUint16(off+28,true);const raw=u8.slice(ds,ds+cs);
+  let data;if(m===0)data=raw.buffer;else if(m===8&&window.DecompressionStream)data=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();else continue;
+  out.push(new File([data],name.split('/').pop()))}
+ return out;
+}
+async function walk(entry,acc){if(entry.isFile){acc.push(await new Promise(r=>entry.file(r,()=>r(null))))}else if(entry.isDirectory){const rd=entry.createReader();let batch;do{batch=await new Promise(r=>rd.readEntries(r,()=>r([])));for(const c of batch)await walk(c,acc)}while(batch.length)}}
+async function fromDrop(dt){const items=[...(dt.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+ if(items.length){const acc=[];for(const en of items)await walk(en,acc);return acc.filter(Boolean)}return [...dt.files]}
+// ---------- next missing ----------
+const skipped=new Set();
+function nextMissing(){return SONGS.find(s=>!midis[s.k]&&!skipped.has(s.k))||SONGS.find(s=>!midis[s.k])}
+function updNM(){const s=nextMissing();if(!s){$('nm').textContent='All done! 🎉';$('nmgo').removeAttribute('href');return}
+ $('nm').textContent=s.t+' — '+(s.a[0]||'');$('nmgo').href='https://bitmidi.com/search?q='+encodeURIComponent(s.t+' '+(s.a[0]||''));pendingSong=s}
+let pendingSong=null;
+$('nmgo').addEventListener('click',()=>{if(pendingSong){lastAsked=pendingSong;skipped.add(pendingSong.k);setTimeout(updNM,50)}});
+$('nmskip').onclick=()=>{if(pendingSong)skipped.add(pendingSong.k);updNM()};
+$('dir').onclick=()=>{$('dirin').value='';$('dirin').click()};
+$('dirin').onchange=()=>addFiles($('dirin').files);
+let lastAsked=null;
+
+// ---------- watch Downloads folder ----------
+let watchDir=null,seen=new Set(),wTimer=null;
+const wst=t=>{$('wst').innerHTML=t};
+async function scanDir(first){
+ const fresh=[];
+ try{for await (const [name,hd] of watchDir.entries()){
+  if(hd.kind!=='file'||!/\.(mid|midi|kar|zip)$/i.test(name))continue;
+  const f=await hd.getFile();const id=name+'|'+f.size+'|'+f.lastModified;
+  if(seen.has(id))continue;seen.add(id);if(!first)fresh.push(f)}}
+ catch(e){clearInterval(wTimer);wst('<span style="color:var(--acc2)">Lost access — tap Watch again</span>');$('watch').textContent='👀 Watch my Downloads';return}
+ if(fresh.length){logL('m','⬇ new download: '+fresh.map(f=>f.name).join(', '));await addFiles(fresh)}
+}
+async function startWatch(h){
+ if((await h.queryPermission({mode:'read'}))!=='granted'&&(await h.requestPermission({mode:'read'}))!=='granted'){wst('Permission not given');return}
+ watchDir=h;seen.clear();await scanDir(true);clearInterval(wTimer);wTimer=setInterval(()=>scanDir(false),1200);
+ wst('<span style="color:var(--ok)">● Watching “'+esc(h.name)+'”</span>');$('watch').textContent='👀 Change folder';
+ try{if(store.db)store.db.transaction('m','readwrite').objectStore('m').put(h,'__dir')}catch(e){}
+}
+$('watch').onclick=async()=>{
+ if(savedDir&&!watchDir){const h=savedDir;savedDir=null;try{await startWatch(h);return}catch(e){}}
+ if(!window.showDirectoryPicker){wst('This browser can’t watch folders — use Chrome or Edge, or drop files instead');return}
+ try{await startWatch(await window.showDirectoryPicker({id:'mididl',mode:'read',startIn:'downloads'}))}
+ catch(e){if(e.name==='AbortError')return;
+  wst('<span style="color:var(--acc2)">'+(/frame|origin|Security/i.test(e.name+e.message)?'Not allowed inside this viewer — open the offline copy of this page in Chrome to use it':'Couldn’t watch that folder: '+esc(e.message))+'</span>')}
+};
+let savedDir=null;
+// ---------- synth test (original jingle) ----------
+function test(){
+ const notes=[];let t=0;const add=(n,d,ch=0,p=0,v=96,at)=>notes.push({t:at??t,d,ch,n,v,p,g:.8,pan:64});
+ const ch=[[57,60,64],[53,57,60],[48,52,55],[55,59,62]];
+ const mel=[69,72,76,74,72,69,67,69,65,69,72,74,72,67,71,74];
+ for(let bar=0;bar<4;bar++){const c=ch[bar];const b=bar*2;
+  c.forEach(n=>add(n,1.9,1,48,70,b));add(c[0]-24,.9,2,33,100,b);add(c[0]-24,.9,2,33,100,b+1);
+  for(let i=0;i<4;i++){add(mel[bar*4+i],.45,0,80,100,b+i*.5);if(i%2===0)add(36,.1,9,0,110,b+i*.5);add(42,.1,9,0,70,b+i*.5+.25);if(i%2)add(38,.1,9,0,100,b+i*.5)}}
+ notes.sort((a,b)=>a.t-b.t);
+ S.song={k:'__test',t:'Synth test',a:['Original jingle']};S.data={notes,bends:[],dur:8.2,isTest:true};play(0);
+}
+// ---------- visualizer ----------
+function drawViz(){
+ const cv=$('viz'),g=cv.getContext('2d'),buf=new Uint8Array(analyser.frequencyBinCount);
+ (function f(){requestAnimationFrame(f);analyser.getByteFrequencyData(buf);g.clearRect(0,0,cv.width,cv.height);
+  const N=48,w=cv.width/N;for(let i=0;i<N;i++){const idx=Math.floor(Math.pow(i/N,1.8)*buf.length*.7);const v=buf[idx]/255;const h=v*cv.height*.9;
+   const gr=g.createLinearGradient(0,cv.height,0,cv.height-h);gr.addColorStop(0,'#ff5f8a');gr.addColorStop(1,'#ffb347');g.fillStyle=gr;g.fillRect(i*w+3,cv.height-h,w-6,h)}})();
+}
+(function idle(){const cv=$('viz'),g=cv.getContext('2d');g.fillStyle='#2c2838';for(let i=0;i<48;i++)g.fillRect(i*cv.width/48+3,cv.height-6,cv.width/48-6,6)})();
+// ---------- boot ----------
+(async()=>{render();await store.open();for(const [k,v] of await store.all()){if(k==='__dir'){savedDir=v;wst('Tap Watch to resume “'+esc(v.name)+'”');continue}if(SONGS.find(s=>s.k===k))midis[k]={name:v.name,bytes:v.bytes}}render();updNM()})();
+</script>
+</body>
+</html>
