@@ -118,6 +118,8 @@ input[type=range]{flex:1;accent-color:var(--acc)}
     <div class="card">
       <div class="stat"><span>Songs with a MIDI</span><b id="cnt">0 / 0</b></div>
       <div class="bar"><i id="prog" style="width:0"></i></div>
+      <div style="display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap"><button class="btn" id="bk">⬇ Backup</button><button class="btn" id="rs">⬆ Restore</button><span id="bkMsg" style="font-size:12px;color:var(--dim);align-self:center"></span></div>
+      <input type="file" id="rsin" accept=".zip" hidden>
       <div class="log" id="log"></div>
     </div>
     <canvas id="viz" class="card" width="760" height="220"></canvas>
@@ -409,18 +411,51 @@ async function addFiles(list){
  if(files.length===1&&first)load(first);else ui();
 }
 // ---------- zip + folders ----------
-async function unzip(buf){
+async function unzipAll(buf,want){
  const d=new DataView(buf),u8=new Uint8Array(buf),out=[];let e=-1;
  for(let i=u8.length-22;i>=Math.max(0,u8.length-66000);i--)if(d.getUint32(i,true)===0x06054b50){e=i;break}
  if(e<0)throw Error('bad zip');let p=d.getUint32(e+16,true);const n=d.getUint16(e+10,true);
  for(let i=0;i<n;i++){const m=d.getUint16(p+10,true),cs=d.getUint32(p+20,true),fl=d.getUint16(p+28,true),xl=d.getUint16(p+30,true),cl=d.getUint16(p+32,true),off=d.getUint32(p+42,true);
   const name=new TextDecoder().decode(u8.subarray(p+46,p+46+fl));p+=46+fl+xl+cl;
-  if(!/\.(mid|midi|kar)$/i.test(name)||name.includes('__MACOSX'))continue;
+  if(!want(name)||name.includes('__MACOSX'))continue;
   const ds=off+30+d.getUint16(off+26,true)+d.getUint16(off+28,true);const raw=u8.slice(ds,ds+cs);
   let data;if(m===0)data=raw.buffer;else if(m===8&&window.DecompressionStream)data=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();else continue;
-  out.push(new File([data],name.split('/').pop()))}
+  out.push({name,data})}
  return out;
 }
+async function unzip(buf){return (await unzipAll(buf,n=>/\.(mid|midi|kar)$/i.test(n))).map(f=>new File([f.data],f.name.split('/').pop()))}
+// ---------- backup / restore ----------
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=u=>{let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+function makeZip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+ for(const f of files){const nm=enc.encode(f.name),dat=new Uint8Array(f.data),crc=crc32(dat);
+  const lh=new DataView(new ArrayBuffer(30));lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x800,true);lh.setUint32(14,crc,true);lh.setUint32(18,dat.length,true);lh.setUint32(22,dat.length,true);lh.setUint16(26,nm.length,true);
+  parts.push(lh.buffer,nm,dat);
+  const ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x800,true);ch.setUint32(16,crc,true);ch.setUint32(20,dat.length,true);ch.setUint32(24,dat.length,true);ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+  cen.push(ch.buffer,nm);off+=30+nm.length+dat.length}
+ const cs=cen.reduce((a,b)=>a+(b.byteLength||b.length),0);const end=new DataView(new ArrayBuffer(22));end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cs,true);end.setUint32(16,off,true);
+ return new Blob([...parts,...cen,end.buffer],{type:'application/zip'})}
+$('bk').onclick=()=>{
+ const keys=Object.keys(midis);const files=[],map={};
+ keys.forEach((k,i)=>{const safe=(String(i+1).padStart(3,'0')+' '+midis[k].name).replace(/[\\/:*?"<>|]/g,'_');map['midi/'+safe]={k,name:midis[k].name};files.push({name:'midi/'+safe,data:midis[k].bytes})});
+ const meta={app:'liked-songs-midi-jukebox',version:1,saved:new Date().toISOString(),midis:map,edits:ov};
+ files.unshift({name:'backup.json',data:new TextEncoder().encode(JSON.stringify(meta,null,1))});
+ const blob=makeZip(files),a=document.createElement('a');a.href=URL.createObjectURL(blob);
+ a.download='jukebox-backup-'+new Date().toISOString().slice(0,10)+'.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+ $('bkMsg').textContent='Saved '+keys.length+' MIDI'+(keys.length===1?'':'s')+' + your list changes';
+};
+$('rs').onclick=()=>{$('rsin').value='';$('rsin').click()};
+$('rsin').onchange=async()=>{const f=$('rsin').files[0];if(!f)return;
+ try{const all=await unzipAll(await f.arrayBuffer(),n=>n==='backup.json'||/\.(mid|midi|kar)$/i.test(n));
+  const mj=all.find(x=>x.name==='backup.json');const meta=mj?JSON.parse(new TextDecoder().decode(mj.data)):null;
+  if(!meta||meta.app!=='liked-songs-midi-jukebox'){await addFiles(all.filter(x=>x.name!=='backup.json').map(x=>new File([x.data],x.name.split('/').pop())));$('bkMsg').textContent='Not a jukebox backup — matched files by name';return}
+  let n=0;for(const x of all){const info=meta.midis&&meta.midis[x.name];if(!info||!info.k)continue;
+   try{const parsed=parseMidi(x.data);midis[info.k]={name:info.name,bytes:x.data,parsed};store.put(info.k,{name:info.name,bytes:x.data});n++}catch(e){logL('x','✗ '+info.name+': '+e.message)}}
+  if(meta.edits&&Array.isArray(meta.edits.add)&&Array.isArray(meta.edits.remove)){
+   for(const a of meta.edits.add)if(a&&a.k&&!ov.add.find(b=>b.k===a.k))ov.add.push(a);
+   for(const k of meta.edits.remove)if(typeof k==='string'&&!ov.remove.includes(k))ov.remove.push(k);applyOv()}
+  render();updNM();renderChg();ui();logL('m','⬆ restored '+n+' MIDIs from '+f.name);$('bkMsg').textContent='Restored '+n+' MIDIs'}
+ catch(e){$('bkMsg').textContent='Couldn’t read that backup: '+e.message}};
 async function walk(entry,acc){if(entry.isFile){acc.push(await new Promise(r=>entry.file(r,()=>r(null))))}else if(entry.isDirectory){const rd=entry.createReader();let batch;do{batch=await new Promise(r=>rd.readEntries(r,()=>r([])));for(const c of batch)await walk(c,acc)}while(batch.length)}}
 async function fromDrop(dt){const items=[...(dt.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
  if(items.length){const acc=[];for(const en of items)await walk(en,acc);return acc.filter(Boolean)}return [...dt.files]}
